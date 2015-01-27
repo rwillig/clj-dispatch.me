@@ -15,34 +15,65 @@
 
 (def base-url   "https://api-sandbox.dispatch.me")
 (def url #(str base-url %))
+(def route-maps 
+  {:users             {:route "/v1/users" :singular :user :plural :users}
+   :organizations     {:route "/v1/organizations" :singular :organization :plural :organizations}
+   :appointments      {:route "/v1/appointments" :singular :appointment :plural :appointments}
+   :attachments       {:route "/v1/attachments" :singular :attachment :plural :attachments}
+   :addresses         {:route "/v1/addresses" :singular :address :plural :addresses}
+   :jobs              {:route "/v1/jobs" :singular :job :plural :jobs}
+   :customers         {:route "/v1/customers" :singular :customer :plural :customers}})
 
-;----------------------users-----------------------------------------------
-
-(defn whoami []
-  (let [url             (url "/v1/me")
+(defn get-things [entity fltr]
+  (let [url             (url (:route entity))
+        my-key          (:plural entity)
         payload         (merge (get-headers)
-                               (auth-headers))
-        resp            (get-req url payload)]
-    (-> resp :body :user)))
-
-(defn get-users [& {:keys [fltr]}]
-  (let [url             (url "/v1/users")
-        payload         (merge (get-headers) 
                                (when fltr {:query-params {:filter fltr}})
                                (auth-headers))
         resp            (get-req url payload)]
-    (-> resp :body :users)))
+    (-> resp :body my-key)))
 
-(defn delete-user [id]
-  (let [url             (url (str "/v1/users/" id))
+(defn add-thing [entity thing]
+  (let [url             (url (:route entity))
+        my-key          (:singular entity)
+        payload         (merge (post-headers)
+                               (auth-headers)
+                               {:form-params thing})
+        resp            (post-req url payload)]
+    (-> resp :body my-key)))
+(defn update-thing [entity thing]
+  (let [url             (url (str (:route entity) "/" (:id thing)))
+        my-key          (:singular entity)
+        payload         (merge (get-headers)
+                               (auth-headers)
+                               {:form-params (dissoc thing :id)})
+        resp            (update-req url payload)]
+    (-> resp :body my-key)))
+
+(defn delete-thing [entity id]
+  (let [url             (url (str (:route entity) "/" id))
         payload         (merge (post-headers)
                                (auth-headers))
         resp            (delete-req url payload)]
     (:body resp)))
+;----------------------users-----------------------------------------------
+
+(defn whoami []
+  (let [entity          (assoc (:users route-maps)
+                               :route "/v1/me"
+                               :plural :user)]
+    (get-things entity nil)))
+
+(defn get-users [& {:keys [fltr]}]
+  (get-things (:users route-maps) fltr))
+
+(defn delete-user [id]
+  (delete-thing (:users route-maps) id))
 
 (defn get-technicians [& {:keys [fltr]}]
   (let [roles           {:by_user_roles "technician"}]
     (get-users :fltr (merge roles fltr))))
+
 
 (defn get-dispatchers [& {:keys [fltr]}]
   (let [roles           {:by_user_roles "dispatcher"}]
@@ -51,147 +82,63 @@
 ;---------------------------organizations----------------------------------
 
 (defn get-organizations [& {:keys [fltr]}]
-  (let [url             (url "/v1/organizations")
-        payload         (merge (get-headers) 
-                               (if fltr {:query-params {:filter fltr}})
-                               (auth-headers))
-        resp            (get-req url payload)]
-    (-> resp :body :organizations)))
+  (get-things (:organizations route-maps) fltr))
 
 ;--------------addresses-----------------------------------------------------
 
 (defn get-addresses [& {:keys [fltr]}]
-  (let [url             (url "/v1/addresses")
-        payload         (merge (get-headers)
-                               (if fltr {:query-params {:filter fltr}})
-                               (auth-headers))
-        resp            (get-req url payload)]
-    (-> resp :body :addresses)))
+  (get-things (:addresses route-maps) fltr))
 
-(defn add-address [address & other]
-  (let [url             (url "/v1/addresses")
-        payload         (merge (post-headers) 
-                               (auth-headers)
-                               {:form-params address})
-        resp            (post-req url payload)]
-    (-> resp :body :address)))
+(defn add-address [address]
+  (add-thing (:addresses route-maps) address))
 
 (defn update-address [address]
-  (let [url             (url (str "/v1/addresses/" (:id address)))
-        payload         (merge (get-headers)
-                               (auth-headers)
-                               {:form-params (dissoc address :id)})
-        resp            (update-req url payload)]
-    (-> resp :body :address)))
+  (update-thing (:addresses route-maps) address))
 
 (defn delete-address [id]
-  (let [url             (url (str "/v1/addresses/" id))
-        payload         (merge (get-headers)
-                               (auth-headers))
-        resp            (delete-req url payload)]
-    (:body resp)))
+  (delete-thing (:addresses route-maps) id))
 
 ;--------------customers-----------------------------------------------------
 
 (defn get-customers [& {:keys [fltr]}]
-  (let [url             (url "/v1/customers")
-        payload         (merge (get-headers) 
-                               (if fltr {:query-params {:filter fltr}})
-                               (auth-headers))
-        resp            (get-req url payload)]
-    (-> resp :body :customers)))
+  (get-things (:customers route-maps) fltr))
 
 
-(defn add-customer [customer & the-rest]
-  (let [url             (url "/v1/customers")
-        address-fields  #{}
-        payload         (merge (post-headers) 
-                               (auth-headers) 
-                               {:form-params customer})
-        resp            (post-req url payload)] 
-    (-> resp :body :customer)))
+(defn add-customer [customer]
+  (add-thing (:customers route-maps) customer))
 
 (defn update-customer [customer]
-  (let [url             (url (str "/v1/customers/" (:id customer)))
-        payload         (merge (post-headers)
-                               (auth-headers)
-                               {:form-params (dissoc customer :id)})
-        resp            (update-req url payload)]
-    (-> resp :body :customer)))
+  (update-thing (:customers route-maps) customer))
 
 ;-------------------------jobs----------------------------------------------
 
 (defn get-jobs [& {:keys [fltr]}]
-  (let [url             (url "/v1/jobs")
-        payload         (merge (post-headers)
-                               (if fltr {:query-params {:filter fltr}})
-                               (auth-headers))
-        resp            (get-req url payload)]
-    (-> resp :body :jobs)))
+  (get-things (:jobs route-maps) fltr))
 
-(defn add-job [job & the-rest]
-  (let [url             (url "/v1/jobs")
-        payload         (merge (post-headers)
-                               (auth-headers)
-                               {:form-params job})
-        resp            (post-req url payload)]
-    (-> resp :body :job)))
+(defn add-job [job]
+  (add-thing (:jobs route-maps) job))
 
 ;-----------------appointments---------------------------------------------
 
 (defn get-appointments [& {:keys [fltr]}]
-  (let [url             (url "/v1/appointments")
-        payload         (merge (get-headers)
-                               (if fltr {:query-params {:filter fltr}})
-                               (auth-headers))
-        resp            (get-req url payload)]
-    (-> resp :body :appointments)))
+  (get-things (:appointments route-maps) fltr))
 
 (defn add-appointment [appt]
-  (let [url             (url "/v1/appointments")
-        payload         (merge (post-headers)
-                               (auth-headers)
-                               {:form-params appt})
-        resp            (post-req url payload)]
-    (-> resp :body :appointment)))
+  (add-thing (:appointments route-maps) appt))
 
 (defn update-appointment [appt]
-  (let [url             (url (str "/v1/appointments/" (:id appt)))
-        payload         (merge (post-headers)
-                               (auth-headers)
-                               {:form-params (dissoc appt :id)})
-        resp            (update-req url payload)]
-    (-> resp :body :appointment)))
+  (update-thing (:appointments route-maps) appt))
 
 ;--------------------attachments-------------------------------------------
 
 (defn get-attachments [& {:keys [fltr]}]
-  (let [url             (url "/v1/attachments")
-        payload         (merge (get-headers)
-                               (if fltr {:query-params {:filter fltr}})
-                               (auth-headers))
-        resp            (get-req url payload)]
-    (-> resp :body :attachments)))
+  (get-things (:attachments route-maps) fltr))
 
 (defn add-attachment [attach]
-  (let [url             (url "/v1/attachments")
-        payload         (merge (post-headers)
-                               {:form-params attach}
-                               (auth-headers))
-        resp            (post-req url payload)]
-    (-> resp :body :attachment)))
+  (add-thing (:attachments route-maps) attach))
 
 (defn update-attachment [attach]
-  (let [url             (url (str "/v1/attachments/" (:id attach)))
-        payload         (merge (post-headers)
-                               (auth-headers)
-                               {:form-params (dissoc attach :id)})
-        resp            (post-req url payload)]
-    (-> resp :body :attachment)))
+  (update-thing (:attachments route-maps) attach))
 
 (defn delete-attachment [id]
-  (let [url             (url (str "/v1/attachments/" id))
-        payload         (merge (post-headers)
-                               (auth-headers))
-        resp            (delete-attachment url payload)]
-    (:body resp)))
+  (delete-thing (:attachments route-maps) id))
