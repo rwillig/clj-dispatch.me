@@ -18,6 +18,15 @@
 (def base-url   "https://files-api-sandbox.dispatch.me")
 (def url #(str base-url %))
 
+;--------------------file utilities----------------------------------------
+
+(defn read-file  [file-path]
+    (with-open  [reader  (io/input-stream file-path)]
+      (println (type reader))
+          (let  [length  (.length  (io/file file-path))
+                           buffer  (byte-array length)]
+                  (.read reader buffer 0 length)
+                        buffer)))
 ;---------------------files-------------------------------------------------
 
 (defn get-file-info [uid]
@@ -33,13 +42,13 @@
     (:body resp)
     resp))
 
-(defn upload-file [filename caption]
+(defn upload-file [filename mime-type caption]
   (let [url             (url "/v1/datafiles")
         multi           [
                          {:name "name" :content caption}
-                         {:name "Content/type":content "image/jpeg"}
+                         {:name "Content/type" :content mime-type}
                          {:name "filename" :content (last (split filename #"/"))}
-                         {:name "file" :content (io/file filename)}]
+                         {:name "file" :content (io/file filename) }]
         payload         (merge (base-headers)
                                (auth-headers)
                                {:multipart multi})

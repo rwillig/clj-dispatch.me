@@ -8,6 +8,7 @@
                   [org.clojure/data.json  "0.2.5"]
                   [cheshire  "5.4.0"]
                   [clj-time "0.9.0"]
+                  [byte-streams  "0.2.0-alpha7"]
                   [slingshot  "0.12.1"]
                   [clj-http "1.0.1"]])
 

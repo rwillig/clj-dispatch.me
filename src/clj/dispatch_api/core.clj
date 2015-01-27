@@ -159,6 +159,39 @@
   (let [url             (url (str "/v1/appointments/" (:id appt)))
         payload         (merge (post-headers)
                                (auth-headers)
-                               (:form-params (dissoc appt :id)))
+                               {:form-params (dissoc appt :id)})
         resp            (update-req url payload)]
     (-> resp :body :appointment)))
+
+;--------------------attachments-------------------------------------------
+
+(defn get-attachments [& {:keys [fltr]}]
+  (let [url             (url "/v1/attachments")
+        payload         (merge (get-headers)
+                               (if fltr {:query-params {:filter fltr}})
+                               (auth-headers))
+        resp            (get-req url payload)]
+    (-> resp :body :attachments)))
+
+(defn add-attachment [attach]
+  (let [url             (url "/v1/attachments")
+        payload         (merge (post-headers)
+                               {:form-params attach}
+                               (auth-headers))
+        resp            (post-req url payload)]
+    (-> resp :body :attachment)))
+
+(defn update-attachment [attach]
+  (let [url             (url (str "/v1/attachments/" (:id attach)))
+        payload         (merge (post-headers)
+                               (auth-headers)
+                               {:form-params (dissoc attach :id)})
+        resp            (post-req url payload)]
+    (-> resp :body :attachment)))
+
+(defn delete-attachment [id]
+  (let [url             (url (str "/v1/attachments/" id))
+        payload         (merge (post-headers)
+                               (auth-headers))
+        resp            (delete-attachment url payload)]
+    (:body resp)))
